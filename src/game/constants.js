@@ -95,6 +95,7 @@ export function initialRoomState(code, hostId, hostName) {
     phaseEndsAt: null,
     votes: {},
     log: [],
+    chat: [],
     lastEliminated: null,
     winner: null,
     createdAt: Date.now(),
@@ -110,4 +111,8 @@ export function initialRoomState(code, hostId, hostName) {
 
 export function addLog(room, text) {
   room.log = [...(room.log || []), { t: Date.now(), text }].slice(-50);
+}
+
+export function addChat(room, playerId, playerName, text) {
+  room.chat = [...(room.chat || []), { id: uid(), t: Date.now(), playerId, playerName, text }].slice(-100);
 }

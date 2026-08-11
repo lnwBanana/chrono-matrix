@@ -17,6 +17,7 @@ import {
   isBot,
   initialRoomState,
   addLog,
+  addChat,
 } from "./game/constants.js";
 import { GlitchTitle, Panel, Btn, Countdown } from "./components/Atoms.jsx";
 import { RevealScreen } from "./components/RevealScreen.jsx";
@@ -32,6 +33,7 @@ export default function ChronoMatrix() {
   const [room, setRoomState] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [chatInput, setChatInput] = useState("");
 
   const isHost = room && room.hostId === myId;
   const me = room?.players?.find((p) => p.id === myId);
@@ -87,12 +89,15 @@ export default function ChronoMatrix() {
     if (!isDriver || !room) return;
     if (!room.phaseEndsAt) return;
     const check = setInterval(async () => {
-      if (Date.now() >= room.phaseEndsAt) {
-        const fresh = await getRoom(roomCode);
-        if (!fresh) return;
-        if (fresh.phase === PHASE.LIVE) {
-          await beginVote(fresh);
-        } else if (fresh.phase === PHASE.VOTE) {
+      const fresh = await getRoom(roomCode);
+      if (!fresh) return;
+      if (fresh.phase === PHASE.LIVE) {
+        if (Date.now() >= fresh.phaseEndsAt) await beginVote(fresh);
+      } else if (fresh.phase === PHASE.VOTE) {
+        const aliveCount = fresh.players.filter((p) => p.alive).length;
+        const votedCount = Object.keys(fresh.votes).length;
+        // don't wait out the full timer if everyone alive already voted
+        if (Date.now() >= fresh.phaseEndsAt || (aliveCount > 0 && votedCount >= aliveCount)) {
           await resolveVote(fresh);
         }
       }
@@ -367,6 +372,15 @@ export default function ChronoMatrix() {
     });
   }
 
+  async function sendChat(text) {
+    const clean = (text || "").trim().slice(0, 200);
+    if (!clean) return;
+    await updateRoom(roomCode, (fresh) => {
+      addChat(fresh, myId, me?.name || myName || "?", clean);
+      return fresh;
+    });
+  }
+
   async function checkVerifyCode(code) {
     const clean = (code || "").trim().toUpperCase();
     if (!clean) return;
@@ -554,15 +568,66 @@ export default function ChronoMatrix() {
   async function resetToLobby() {
     await updateRoom(roomCode, (fresh) => {
       fresh.phase = PHASE.LOBBY;
-      fresh.players = fresh.players.map((p) => ({ ...p, role: null, alive: true, ap: 3, credits: 20, hasIntercept: false, hasFakeDead: false, faking: false, revived: false }));
+      fresh.players = fresh.players.map((p) => ({ ...p, role: null, alive: true, ap: 3, credits: 20, hasIntercept: false, hasFakeDead: false, faking: false, revived: false, framed: false, framedBy: null }));
       fresh.round = 0;
       fresh.votes = {};
       fresh.lastEliminated = null;
       fresh.winner = null;
       fresh.phaseEndsAt = null;
+      fresh.nextEventAt = null;
+      // wipe every trace from the game that just ended — otherwise old
+      // logs, market listings, witnessed events, verify codes, and framed
+      // evidence all bleed into the next game
+      fresh.log = [];
+      fresh.chat = [];
+      fresh.trueEvents = [];
+      fresh.market = [];
+      fresh.fakeDeadIds = [];
+      fresh.frameLog = [];
+      fresh.verifyAttempts = [];
       addLog(fresh, "กลับสู่ Lobby — พร้อมเล่นรอบใหม่");
       return fresh;
     });
+  }
+
+  function renderChatPanel() {
+    const chat = room?.chat || [];
+    return (
+      <Panel className="mb-4">
+        <div className="text-xs text-emerald-500 mb-2">💬 แชท</div>
+        <div className="space-y-1 max-h-40 overflow-y-auto text-xs mb-2">
+          {chat.length === 0 && (
+            <div className="text-zinc-600 text-center py-2">ยังไม่มีใครพิมพ์อะไรเลย</div>
+          )}
+          {chat.map((c) => (
+            <div key={c.id}>
+              <span className={c.playerId === myId ? "text-emerald-400" : "text-cyan-400"}>{c.playerName}:</span>{" "}
+              <span className="text-zinc-300 break-words">{c.text}</span>
+            </div>
+          ))}
+        </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!chatInput.trim()) return;
+            sendChat(chatInput);
+            setChatInput("");
+          }}
+          className="flex gap-2"
+        >
+          <input
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            placeholder="พิมพ์แชท..."
+            maxLength={200}
+            className="flex-1 bg-black border border-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-200"
+          />
+          <Btn type="submit" className="text-xs px-3 py-1.5">
+            ส่ง
+          </Btn>
+        </form>
+      </Panel>
+    );
   }
 
   // ---------------- RENDER ----------------
@@ -808,6 +873,8 @@ export default function ChronoMatrix() {
             </div>
           </Panel>
 
+          {renderChatPanel()}
+
           {!iAmFaking && (
             <Btn variant="danger" onClick={callEmergencyMeeting} className="w-full">
               🚨 เรียกประชุมฉุกเฉิน
@@ -877,6 +944,8 @@ export default function ChronoMatrix() {
               คุณกำลังแกล้งตายอยู่ — โหวตไม่ได้จนกว่าจะ Reboot
             </div>
           )}
+
+          {renderChatPanel()}
         </div>
       </div>
     );

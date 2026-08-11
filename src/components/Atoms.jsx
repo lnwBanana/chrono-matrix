@@ -16,7 +16,7 @@ export function Panel({ children, className = "" }) {
   );
 }
 
-export function Btn({ children, onClick, disabled, variant = "primary", className = "" }) {
+export function Btn({ children, onClick, disabled, variant = "primary", className = "", type = "button" }) {
   const base = "px-4 py-2.5 rounded-md font-semibold text-sm tracking-wide transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
   const variants = {
     primary: "bg-emerald-600 hover:bg-emerald-500 text-black",
@@ -24,7 +24,7 @@ export function Btn({ children, onClick, disabled, variant = "primary", classNam
     ghost: "bg-transparent border border-emerald-800 hover:border-emerald-500 text-emerald-300",
   };
   return (
-    <button className={`${base} ${variants[variant]} ${className}`} onClick={onClick} disabled={disabled}>
+    <button type={type} className={`${base} ${variants[variant]} ${className}`} onClick={onClick} disabled={disabled}>
       {children}
     </button>
   );

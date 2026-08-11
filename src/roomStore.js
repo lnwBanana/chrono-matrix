@@ -51,6 +51,7 @@ function deepNormalize(value) {
 const REQUIRED_ARRAY_FIELDS = [
   "players",
   "log",
+  "chat",
   "trueEvents",
   "market",
   "fakeDeadIds",
