@@ -9,13 +9,16 @@ import { db } from "./firebase.js";
 // Realtime Database does not reliably preserve JS arrays: any array
 // that becomes sparse (e.g. an item removed) or is stored fresh often
 // round-trips back as a plain object with numeric string keys instead
-// of a real Array. Every array field the game relies on (players,
-// market, log, trueEvents, ...) then silently turns into a non-array,
-// and the first .find()/.map()/.filter()/.push() call on it throws —
-// which crashes the whole React tree with no error boundary (blank
-// black screen). We normalize known array fields back into real
-// arrays every time we read a room out of Firebase.
-const ARRAY_FIELDS = [
+// of a real Array. This bites at TWO levels here:
+//   1. top-level room fields: players, market, log, trueEvents, ...
+//   2. nested arrays INSIDE those items: trueEvents[i].witnesses,
+//      market[i].buyers
+// Any of these silently turning into a non-array means the first
+// .find()/.map()/.includes()/.push() call on it throws — which
+// crashes the whole React tree with no error boundary (blank black
+// screen). We recursively normalize every known array field every
+// time we read a room out of Firebase.
+const TOP_LEVEL_ARRAY_FIELDS = [
   "players",
   "log",
   "trueEvents",
@@ -24,6 +27,9 @@ const ARRAY_FIELDS = [
   "frameLog",
   "verifyAttempts",
 ];
+
+// fields that must be arrays, wherever they appear (nested or not)
+const NESTED_ARRAY_KEYS = new Set(["witnesses", "buyers"]);
 
 function toArray(value) {
   if (Array.isArray(value)) return value;
@@ -36,15 +42,26 @@ function toArray(value) {
   return [];
 }
 
+// Walk one level of item objects (e.g. each market listing, each true
+// event) and coerce any known nested-array field back into a real array.
+function fixNestedArrays(item) {
+  if (!item || typeof item !== "object") return item;
+  const out = { ...item };
+  for (const key of NESTED_ARRAY_KEYS) {
+    if (key in out) out[key] = toArray(out[key]);
+  }
+  return out;
+}
+
 function normalizeRoom(data) {
   if (!data) return data;
   const out = { ...data };
-  for (const field of ARRAY_FIELDS) {
-    out[field] = toArray(out[field]);
+  for (const field of TOP_LEVEL_ARRAY_FIELDS) {
+    out[field] = toArray(out[field]).map(fixNestedArrays);
   }
   // votes is a plain map (playerId -> targetId), not an array — but it
   // can come back as `undefined` if empty, which breaks `Object.keys`.
-  out.votes = out.votes && typeof out.votes === "object" ? out.votes : {};
+  out.votes = out.votes && typeof out.votes === "object" && !Array.isArray(out.votes) ? out.votes : {};
   return out;
 }
 

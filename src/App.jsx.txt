@@ -134,7 +134,7 @@ export default function ChronoMatrix() {
           for (const bot of bots) {
             const roll = Math.random();
             const witnessed = fresh.trueEvents.filter(
-              (e) => e.witnesses.includes(bot.id) && !fresh.market.some((l) => l.linkedEventId === e.id)
+              (e) => (e.witnesses || []).includes(bot.id) && !fresh.market.some((l) => l.linkedEventId === e.id)
             );
             if (witnessed.length > 0 && roll < 0.25) {
               const ev = witnessed[0];
@@ -173,7 +173,7 @@ export default function ChronoMatrix() {
               changed = true;
             } else if (roll < 0.16 && bot.credits >= 25) {
               const unread = fresh.market.filter(
-                (l) => l.sellerId !== bot.id && !l.buyers.includes(bot.id) && l.price <= bot.credits
+                (l) => l.sellerId !== bot.id && !(l.buyers || []).includes(bot.id) && l.price <= bot.credits
               );
               if (unread.length > 0) {
                 const pick = unread[Math.floor(Math.random() * unread.length)];
@@ -385,7 +385,7 @@ export default function ChronoMatrix() {
     await updateRoom(roomCode, (fresh) => {
       const listing = fresh.market.find((l) => l.id === listingId);
       if (!listing) return fresh;
-      if (listing.buyers.includes(myId) || listing.sellerId === myId) return fresh;
+      if ((listing.buyers || []).includes(myId) || listing.sellerId === myId) return fresh;
       const buyer = fresh.players.find((p) => p.id === myId);
       if (!buyer || buyer.credits < listing.price) return fresh;
       buyer.credits -= listing.price;

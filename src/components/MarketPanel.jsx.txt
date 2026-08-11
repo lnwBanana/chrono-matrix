@@ -10,7 +10,7 @@ export function MarketPanel({ room, myId, me, onPost, onBuy, onRevealFree, onVer
   const [forgeCode, setForgeCode] = useState("");
   const [verifyInput, setVerifyInput] = useState("");
 
-  const myWitnessedEvents = room.trueEvents.filter((e) => e.witnesses.includes(myId));
+  const myWitnessedEvents = room.trueEvents.filter((e) => (e.witnesses || []).includes(myId));
   const alreadyListedEventIds = new Set(
     room.market.filter((l) => l.linkedEventId).map((l) => l.linkedEventId)
   );
@@ -55,7 +55,7 @@ export function MarketPanel({ room, myId, me, onPost, onBuy, onRevealFree, onVer
             .reverse()
             .map((l) => {
               const seller = room.players.find((p) => p.id === l.sellerId);
-              const bought = l.buyers.includes(myId);
+              const bought = (l.buyers || []).includes(myId);
               const isMine = l.sellerId === myId;
               const revealed = bought || isMine;
               return (
