@@ -84,7 +84,7 @@ export function MarketPanel({ room, myId, me, onPost, onBuy, onRevealFree, onVer
                     </button>
                   )}
                   {isMine && (
-                    <span className="text-xs text-zinc-600">ขายไปแล้ว {l.buyers.length} คน</span>
+                    <span className="text-xs text-zinc-600">ขายไปแล้ว {(l.buyers || []).length} คน</span>
                   )}
                 </div>
               );

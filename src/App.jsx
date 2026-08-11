@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { getRoom, setRoom, updateRoom, subscribeRoom } from "./roomStore.js";
+import { getRoom, setRoom, updateRoom, subscribeRoom, normalizeRoom } from "./roomStore.js";
 import {
   ROLE,
   PHASE,
@@ -209,7 +209,7 @@ export default function ChronoMatrix() {
     const r = initialRoomState(code, myId, myName.trim());
     await setRoom(code, r);
     setRoomCode(code);
-    setRoomState(r);
+    setRoomState(normalizeRoom(r));
     setScreen("lobby");
     setBusy(false);
   }
