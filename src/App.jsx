@@ -180,7 +180,7 @@ export default function ChronoMatrix() {
                 bot.credits -= pick.price;
                 const seller = fresh.players.find((p) => p.id === pick.sellerId);
                 if (seller) seller.credits += pick.price;
-                pick.buyers.push(bot.id);
+                pick.buyers = [...(pick.buyers || []), bot.id];
                 changed = true;
               }
             }
@@ -391,7 +391,7 @@ export default function ChronoMatrix() {
       buyer.credits -= listing.price;
       const seller = fresh.players.find((p) => p.id === listing.sellerId);
       if (seller) seller.credits += listing.price;
-      listing.buyers.push(myId);
+      listing.buyers = [...(listing.buyers || []), myId];
       return fresh;
     });
   }

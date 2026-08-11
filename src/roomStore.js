@@ -78,6 +78,14 @@ export function normalizeRoom(rawData) {
   // votes is a plain map (playerId -> targetId), not an array — but it
   // can come back as `undefined` if empty, which breaks `Object.keys`.
   out.votes = out.votes && typeof out.votes === "object" && !Array.isArray(out.votes) ? out.votes : {};
+  // Nested array fields one level down (market[i].buyers, trueEvents[i].witnesses)
+  // hit the exact same Firebase-drops-empty-arrays problem as the top-level
+  // fields above, but REQUIRED_ARRAY_FIELDS only patches the top level.
+  // Any code that does `listing.buyers.push(...)` without a `|| []` guard
+  // crashes the whole app the moment a listing has zero buyers. Guarantee
+  // these are always real arrays here so mutation code never has to guard.
+  out.market = out.market.map((listing) => ({ ...listing, buyers: toArray(listing.buyers) }));
+  out.trueEvents = out.trueEvents.map((ev) => ({ ...ev, witnesses: toArray(ev.witnesses) }));
   return out;
 }
 
